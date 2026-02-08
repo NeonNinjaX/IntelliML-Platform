@@ -177,27 +177,100 @@ class ModelTrainer:
         y_pred = server.predict(X_test)
         
         # Calculate metrics
+        # Calculate metrics
+        metrics = {}
+        confusion_matrix_data = None
+        roc_curve_data = None
+        
         if self.problem_type == 'classification':
+             # Use safe scoring imports (assuming they are imported at top, else add them)
+            from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix, roc_curve, auc
+            
             test_score = accuracy_score(y_test, y_pred)
             metric_name = 'accuracy'
+            
+            # Simple average for multiclass, or binary
+            is_binary = len(np.unique(y_test)) == 2
+            avg_method = 'binary' if is_binary else 'weighted'
+            
+            metrics = {
+                'accuracy': float(test_score),
+                'precision': float(precision_score(y_test, y_pred, average=avg_method, zero_division=0)),
+                'recall': float(recall_score(y_test, y_pred, average=avg_method, zero_division=0)),
+                'f1': float(f1_score(y_test, y_pred, average=avg_method, zero_division=0)),
+            }
+            
+            # Confusion Matrix
+            cm = confusion_matrix(y_test, y_pred)
+            if self.label_encoder:
+                 classes = self.label_encoder.classes_
+            else:
+                 classes = [str(c) for c in np.unique(y_test)]
+            
+            confusion_matrix_data = []
+            for i, row in enumerate(cm):
+                row_dict = {}
+                for j, val in enumerate(row):
+                    # Use index if classes length mismatch (safety)
+                    col_label = str(classes[j]) if j < len(classes) else str(j)
+                    row_dict[col_label] = int(val)
+                
+                row_label = str(classes[i]) if i < len(classes) else str(i)
+                row_dict["Actual"] = row_label
+                confusion_matrix_data.append(row_dict)
+            
+            # Add labels for frontend
+            confusion_matrix_labels = [str(c) for c in classes]
+
+            # ROC Curve (only if model supports predict_proba and binary for now to keep simple)
+            try:
+                if is_binary and hasattr(server, 'trained_model') and hasattr(server.trained_model, "predict_proba"):
+                     y_prob = server.trained_model.predict_proba(X_test)[:, 1]
+                     fpr, tpr, _ = roc_curve(y_test, y_prob)
+                     roc_auc = auc(fpr, tpr)
+                     metrics['auc'] = float(roc_auc)
+                     
+                     # Sample ROC to reduce payload size
+                     roc_curve_data = [{"x": float(f), "y": float(t)} for f, t in zip(fpr[::5], tpr[::5])]
+                     if roc_curve_data[0]['x'] != 0: roc_curve_data.insert(0, {"x": 0, "y": 0})
+                     if roc_curve_data[-1]['x'] != 1: roc_curve_data.append({"x": 1, "y": 1})
+            except Exception as e:
+                logger.warning(f"ROC curve calculation failed: {e}")
+                metrics['auc'] = 0.0
+
         else:
+            from sklearn.metrics import mean_absolute_error
             test_score = r2_score(y_test, y_pred)
             metric_name = 'r2_score'
-            rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+            mse = mean_squared_error(y_test, y_pred)
+            rmse = np.sqrt(mse)
+            mae = mean_absolute_error(y_test, y_pred)
+            
+            metrics = {
+                'r2': float(test_score),
+                'mse': float(mse),
+                'rmse': float(rmse),
+                'mae': float(mae)
+            }
             train_info['rmse'] = float(rmse)
         
         # Get feature importance
         feature_importance = server.get_feature_importance()
         
-        return {
+        result_dict = {
             'server': server_name,
             'model_name': train_info['model_name'],
             'test_score': float(test_score),
             'cv_score': float(train_info['cv_score_mean']),
             'metric_name': metric_name,
+            'metrics': metrics,
             'feature_importance': feature_importance.tolist() if feature_importance is not None else None,
+            'confusion_matrix': confusion_matrix_data,
+            'confusion_matrix_labels': confusion_matrix_labels if 'confusion_matrix_labels' in locals() else None,
+            'roc_curve': roc_curve_data,
             **train_info
         }
+        return result_dict
     
     def get_best_model_server(self):
         """Get the server containing the best model"""

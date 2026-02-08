@@ -68,20 +68,66 @@ class MLService:
             # Generate AI explanation
             explanation = self._generate_model_explanation(results)
             
-            # Store job results
+            # Make results JSON-safe (convert numpy arrays to lists, handle NaN)
+            def make_json_safe(obj):
+                if isinstance(obj, dict):
+                    return {k: make_json_safe(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [make_json_safe(item) for item in obj]
+                elif hasattr(obj, 'tolist'):  # numpy array
+                    return obj.tolist()
+                elif isinstance(obj, float):
+                    if obj != obj or obj == float('inf') or obj == float('-inf'):
+                        return None
+                    return obj
+                return obj
+            
+            # Generate Suggestions
+            suggestions = []
+            if results['results']:
+                best = results['results'][0] # Already sorted by test_score
+                
+                # Performance-based suggestions
+                if results['problem_type'] == 'classification':
+                    if best['test_score'] < 0.7:
+                         suggestions.append("Model accuracy is low (< 70%). Consider collecting more data or engineering new features.")
+                    if best.get('metrics', {}).get('precision', 1) < 0.6:
+                         suggestions.append("Precision is low. The model has a high false-positive rate.")
+                    if best.get('metrics', {}).get('recall', 1) < 0.6:
+                         suggestions.append("Recall is low. The model is missing many positive instances.")
+                else:
+                    if best['test_score'] < 0.5:
+                         suggestions.append("R² score is low (< 0.5). The model explains less than 50% of the variance.")
+
+            # General suggestions
+            suggestions.append("Try removing noisy features to improve generalization.")
+            suggestions.append("Collect more diverse training samples if possible.")
+            
+            clean_results = make_json_safe(results)
+            
+            # Store job results (including trainer for later use)
             job_result = {
                 'job_id': job_id,
                 'status': 'completed',
                 'target_column': target_column,
-                'results': results,
+                'results': clean_results,
+                'suggestions': suggestions,
                 'explanation': explanation,
-                'trainer': trainer,  # Store trainer for later use
+                'trainer': trainer,  # Store trainer for later use (not returned in response)
             }
             
             self.jobs[job_id] = job_result
             logger.info(f"Job {job_id} completed and stored")
             
-            return job_result
+            # Return JSON-safe response (without trainer)
+            return {
+                'job_id': job_id,
+                'status': 'completed',
+                'target_column': target_column,
+                'results': clean_results,
+                'suggestions': suggestions,
+                'explanation': explanation,
+            }
             
         except Exception as e:
             logger.error(f"Model training error: {str(e)}", exc_info=True)

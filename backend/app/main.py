@@ -28,17 +28,14 @@ app = FastAPI(
 )
 
 # CORS Configuration - MUST be before routes
+# Using wildcard for development to avoid localhost/127.0.0.1 mismatches
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001"
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow all origins in development
+    allow_credentials=False,  # Must be False when using wildcard origins
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Root endpoint - define BEFORE importing routers
@@ -146,6 +143,14 @@ try:
 except Exception as e:
     logger.warning(f"Explanations router not available: {e}")
 
+chat_router = None
+try:
+    from app.api import chat
+    chat_router = chat
+    logger.info("✓ Chat router imported")
+except Exception as e:
+    logger.warning(f"Chat router not available: {e}")
+
 # Include routers - THIS IS CRITICAL
 logger.info("Including routers...")
 
@@ -169,6 +174,10 @@ if models_router:
 if explanations_router:
     app.include_router(explanations_router.router, prefix="/api/explanations", tags=["explanations"])
     logger.info("✓ Explanations router included at /api/explanations")
+
+if chat_router:
+    app.include_router(chat_router.router, prefix="/api/chat", tags=["chat"])
+    logger.info("✓ Chat router included at /api/chat")
 
 logger.info("All routers included successfully")
 

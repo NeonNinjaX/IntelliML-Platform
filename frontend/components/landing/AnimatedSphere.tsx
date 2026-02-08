@@ -26,7 +26,11 @@ export default function AnimatedSphere() {
     // Sphere parameters
     const particles: Particle[] = [];
     const particleCount = 2000;
-    const radius = Math.min(canvas.width, canvas.height) * 0.35;
+
+    // Captured variables to avoid null checks in loop
+    let width = canvas.width;
+    let height = canvas.height;
+    let radius = Math.min(width, height) * 0.35;
     let rotation = 0;
 
     class Particle {
@@ -37,12 +41,10 @@ export default function AnimatedSphere() {
       z: number = 0;
       projected2D = { x: 0, y: 0 };
 
-      constructor() {
+      constructor(i: number) {
         // Distribute particles evenly on sphere using Fibonacci sphere
-        const i = particles.length;
         this.phi = Math.acos(1 - 2 * (i + 0.5) / particleCount);
         this.theta = Math.PI * (1 + Math.sqrt(5)) * i;
-        
         this.update();
       }
 
@@ -55,8 +57,8 @@ export default function AnimatedSphere() {
         // Project to 2D
         const scale = 400 / (400 + this.z);
         this.projected2D = {
-          x: this.x * scale + canvas.width / 2,
-          y: this.y * scale + canvas.height / 2,
+          x: this.x * scale + width / 2,
+          y: this.y * scale + height / 2,
         };
       }
 
@@ -65,11 +67,12 @@ export default function AnimatedSphere() {
 
         // Color based on z-position (depth)
         const depth = (this.z + radius) / (2 * radius);
-        const hue = 240 + depth * 60; // Blue to purple gradient
+        // Cyan (180) to Blue (240) gradient
+        const hue = 190 + depth * 40;
         const opacity = 0.3 + depth * 0.7;
         const size = 1 + depth * 2;
 
-        ctx.fillStyle = `hsla(${hue}, 80%, 60%, ${opacity})`;
+        ctx.fillStyle = `hsla(${hue}, 90%, 60%, ${opacity})`;
         ctx.beginPath();
         ctx.arc(this.projected2D.x, this.projected2D.y, size, 0, Math.PI * 2);
         ctx.fill();
@@ -78,7 +81,7 @@ export default function AnimatedSphere() {
 
     // Create particles
     for (let i = 0; i < particleCount; i++) {
-      particles.push(new Particle());
+      particles.push(new Particle(i));
     }
 
     // Animation loop
@@ -86,12 +89,17 @@ export default function AnimatedSphere() {
     const animate = () => {
       if (!ctx || !canvas) return;
 
+      // Update dimensions in case of resize (though we have listener, good to be safe)
+      width = canvas.width;
+      height = canvas.height;
+      radius = Math.min(width, height) * 0.35;
+
       // Clear canvas with fade effect
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; // Slightly stronger fade for better trails
+      ctx.fillRect(0, 0, width, height);
 
       // Update rotation
-      rotation += 0.003;
+      rotation += 0.002;
 
       // Sort particles by z-index (back to front)
       particles.sort((a, b) => a.z - b.z);
@@ -103,19 +111,24 @@ export default function AnimatedSphere() {
       });
 
       // Draw connections between nearby particles
-      ctx.strokeStyle = 'rgba(139, 92, 246, 0.1)';
+      // Blue/Cyan connection lines
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.15)'; // Cyan-500 low opacity
       ctx.lineWidth = 0.5;
-      
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < Math.min(i + 5, particles.length); j++) {
-          const dx = particles[i].projected2D.x - particles[j].projected2D.x;
-          const dy = particles[i].projected2D.y - particles[j].projected2D.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
 
-          if (distance < 50) {
+      // Only connect a subset to save performance
+      for (let i = 0; i < particles.length; i += 2) {
+        const p1 = particles[i];
+        // Check only next few particles
+        for (let j = i + 1; j < Math.min(i + 4, particles.length); j++) {
+          const p2 = particles[j];
+          const dx = p1.projected2D.x - p2.projected2D.x;
+          const dy = p1.projected2D.y - p2.projected2D.y;
+          const distSq = dx * dx + dy * dy;
+
+          if (distSq < 2500) { // distance < 50
             ctx.beginPath();
-            ctx.moveTo(particles[i].projected2D.x, particles[i].projected2D.y);
-            ctx.lineTo(particles[j].projected2D.x, particles[j].projected2D.y);
+            ctx.moveTo(p1.projected2D.x, p1.projected2D.y);
+            ctx.lineTo(p2.projected2D.x, p2.projected2D.y);
             ctx.stroke();
           }
         }

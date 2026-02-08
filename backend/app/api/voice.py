@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 # Create router
 router = APIRouter(
-    prefix="/api/voice",
     tags=["voice"],
     responses={
         404: {"description": "Not found"},
