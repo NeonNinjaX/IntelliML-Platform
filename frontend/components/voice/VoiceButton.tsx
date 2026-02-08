@@ -5,15 +5,15 @@ import { useVoiceRecording } from '@/hooks/useVoiceRecording';
 import { processVoiceCommand } from '@/lib/api';
 
 export default function VoiceButton() {
-  const { 
-    isRecording, 
-    isPreparing, 
-    startRecording, 
-    stopRecording, 
+  const {
+    isRecording,
+    isPreparing,
+    startRecording,
+    stopRecording,
     error: recordingError,
-    clearError 
+    clearError
   } = useVoiceRecording();
-  
+
   const [transcription, setTranscription] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,11 +24,11 @@ export default function VoiceButton() {
       // Stop recording and process
       setIsProcessing(true);
       setError(null);
-      
+
       try {
         console.log('Stopping recording...');
         const audioBlob = await stopRecording();
-        
+
         if (!audioBlob) {
           throw new Error('No audio recorded');
         }
@@ -38,23 +38,23 @@ export default function VoiceButton() {
         if (audioBlob.size < 1000) {
           throw new Error('Recording too short. Please speak for at least 1 second.');
         }
-        
+
         // Send to backend for processing
         console.log('Sending to backend...');
         const result = await processVoiceCommand(audioBlob);
-        
+
         console.log('Result:', result);
-        
+
         setTranscription(result.transcription);
         setIntent(result.intent);
-        
+
       } catch (err: any) {
         console.error('Processing error:', err);
         setError(err.message || 'Failed to process audio');
       } finally {
         setIsProcessing(false);
       }
-      
+
     } else {
       // Start recording
       setTranscription('');
@@ -75,9 +75,9 @@ export default function VoiceButton() {
           className={`
             relative w-40 h-40 rounded-full flex items-center justify-center
             transition-all duration-300 transform hover:scale-105
-            ${isRecording 
-              ? 'bg-red-500 hover:bg-red-600 shadow-2xl shadow-red-500/50' 
-              : 'bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-2xl shadow-purple-500/50'
+            ${isRecording
+              ? 'bg-red-500 hover:bg-red-600 shadow-2xl shadow-red-500/50'
+              : 'bg-gradient-to-br from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 shadow-2xl shadow-blue-500/40'
             }
             ${(isPreparing || isProcessing) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
           `}
@@ -122,7 +122,7 @@ export default function VoiceButton() {
             </div>
           )}
           {isProcessing && (
-            <p className="text-purple-600 font-medium animate-pulse">
+            <p className="text-cyan-500 font-medium animate-pulse">
               🤖 Processing your command...
             </p>
           )}
@@ -195,14 +195,14 @@ export default function VoiceButton() {
                   {intent.intent}
                 </span>
               </div>
-              
+
               {intent.target_column && (
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-semibold text-gray-700">Target:</span>
                   <span className="text-sm text-gray-900 font-medium">{intent.target_column}</span>
                 </div>
               )}
-              
+
               {intent.needs_clarification && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3">
                   <p className="text-sm text-yellow-800 flex items-start space-x-2">

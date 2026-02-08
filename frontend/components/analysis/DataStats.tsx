@@ -4,54 +4,76 @@ interface DataStatsProps {
   analysis: any;
 }
 
+// Icon components
+const ChartIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+  </svg>
+);
+
+const ColumnsIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+  </svg>
+);
+
+const AlertIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+  </svg>
+);
+
+const SparkleIcon = () => (
+  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+  </svg>
+);
+
 export default function DataStats({ analysis }: DataStatsProps) {
-  if (!analysis) return null;
+  if (!analysis?.basic_info || !analysis?.data_quality || !analysis?.missing_values) {
+    return null;
+  }
 
   const { basic_info, data_quality, missing_values } = analysis;
 
   return (
     <div className="grid md:grid-cols-4 gap-4">
       <StatCard
-        icon="📊"
+        icon={<ChartIcon />}
         label="Total Rows"
         value={basic_info.num_rows.toLocaleString()}
-        color="blue"
+        gradient="from-blue-500 to-cyan-500"
       />
       <StatCard
-        icon="📋"
+        icon={<ColumnsIcon />}
         label="Total Columns"
         value={basic_info.num_columns}
-        color="purple"
+        gradient="from-indigo-500 to-purple-500"
       />
       <StatCard
-        icon="⚠️"
+        icon={<AlertIcon />}
         label="Missing Values"
         value={missing_values.total_missing.toLocaleString()}
-        color={missing_values.total_missing > 0 ? "yellow" : "green"}
+        gradient={missing_values.total_missing > 0 ? "from-amber-500 to-orange-500" : "from-green-500 to-emerald-500"}
       />
       <StatCard
-        icon="✨"
+        icon={<SparkleIcon />}
         label="Quality Score"
         value={`${data_quality.quality_score}/100`}
-        color={data_quality.quality_score > 80 ? "green" : "yellow"}
+        gradient={data_quality.quality_score > 80 ? "from-green-500 to-emerald-500" : "from-amber-500 to-orange-500"}
       />
     </div>
   );
 }
 
-function StatCard({ icon, label, value, color }: any) {
-  const colors = {
-    blue: 'bg-blue-50 border-blue-200 text-blue-800',
-    purple: 'bg-purple-50 border-purple-200 text-purple-800',
-    yellow: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-    green: 'bg-green-50 border-green-200 text-green-800',
-  };
-
+function StatCard({ icon, label, value, gradient }: { icon: React.ReactNode; label: string; value: string | number; gradient: string }) {
   return (
-    <div className={`border-2 rounded-lg p-4 ${colors[color as keyof typeof colors]}`}>
-      <div className="text-3xl mb-2">{icon}</div>
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-sm opacity-75">{label}</div>
+    <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-5 hover:bg-white/10 transition-all group">
+      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center text-white mb-3 shadow-lg group-hover:scale-110 transition-transform`}>
+        {icon}
+      </div>
+      <div className="text-2xl font-bold text-white mb-1">{value}</div>
+      <div className="text-sm text-gray-400">{label}</div>
     </div>
   );
 }

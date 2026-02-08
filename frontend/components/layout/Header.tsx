@@ -1,20 +1,27 @@
+'use client';
+
+const MicIcon = () => (
+  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+  </svg>
+);
+
 export default function Header() {
   return (
-    <header className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg">
-      <div className="container mx-auto px-4 py-6">
+    <header className="bg-slate-900/50 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
+      <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-2xl">🎤</span>
-            </div>
+          <div className="flex items-center gap-3">
             <div>
-              <h1 className="text-2xl font-bold">IntelliML Platform</h1>
-              <p className="text-sm text-purple-100">Voice-Activated AutoML</p>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                IntelliML
+              </h1>
+              <p className="text-xs text-gray-400">Voice-Activated AutoML</p>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-4">
-            <span className="text-sm bg-purple-700 px-3 py-1 rounded-full">
+
+          <div className="flex items-center gap-4">
+            <span className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400 font-medium">
               v1.0.0
             </span>
           </div>

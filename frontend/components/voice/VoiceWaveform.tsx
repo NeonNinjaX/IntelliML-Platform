@@ -12,7 +12,7 @@ export default function VoiceWaveform({ isRecording }: VoiceWaveformProps) {
       {[...Array(20)].map((_, i) => (
         <div
           key={i}
-          className="w-1 bg-purple-500 rounded-full animate-pulse"
+          className="w-1 bg-cyan-500 rounded-full animate-pulse"
           style={{
             height: `${Math.random() * 40 + 10}px`,
             animationDuration: `${Math.random() * 0.5 + 0.5}s`,

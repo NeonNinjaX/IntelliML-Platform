@@ -3,7 +3,24 @@
  * Production-ready with comprehensive error handling
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+function getApiBaseUrl() {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+
+  // In the browser, use the same host as the frontend to avoid 127.0.0.1 mismatches.
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname } = window.location;
+    // Avoid IPv6 localhost resolution issues by forcing IPv4.
+    const resolvedHost = hostname === 'localhost' ? '127.0.0.1' : hostname;
+    return `${protocol}//${resolvedHost}:8000`;
+  }
+
+  // Server-side fallback
+  return 'http://127.0.0.1:8000';
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 // Custom error class for better error handling
 export class APIError extends Error {
@@ -25,9 +42,9 @@ async function apiCall<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
   console.log(`[API] ${options.method || 'GET'} ${url}`);
-  
+
   try {
     const response = await fetch(url, {
       ...options,
@@ -40,9 +57,9 @@ async function apiCall<T>(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.detail || errorData.error || `API Error: ${response.status} ${response.statusText}`;
-      
+
       console.error(`[API Error] ${response.status}:`, errorMessage);
-      
+
       throw new APIError(
         errorMessage,
         response.status,
@@ -73,25 +90,25 @@ export async function uploadFile<T>(
   if (!file) {
     throw new APIError('No file provided');
   }
-  
+
   if (file.size === 0) {
     throw new APIError('File is empty');
   }
-  
+
   // Set default filename based on blob type
   const defaultFileName = fileName || `recording.${getExtensionFromMimeType(file.type)}`;
-  
+
   const url = `${API_BASE_URL}${endpoint}`;
   const formData = new FormData();
   formData.append(fieldName, file, defaultFileName);
-  
+
   console.log(`[API] Uploading to ${url}`, {
     fieldName,
     fileName: defaultFileName,
     size: file.size,
     type: file.type
   });
-  
+
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -103,10 +120,10 @@ export async function uploadFile<T>(
       const errorText = await response.text();
       let errorMessage = 'Upload failed';
       let errorDetails;
-      
+
       try {
         const errorJson = JSON.parse(errorText);
-        
+
         // Handle FastAPI validation errors
         if (errorJson.detail) {
           if (Array.isArray(errorJson.detail)) {
@@ -126,7 +143,7 @@ export async function uploadFile<T>(
         // If JSON parsing fails, use the raw text
         errorMessage = errorText.substring(0, 200); // Limit length
       }
-      
+
       console.error(`[API Upload Error] ${response.status}:`, errorMessage);
       throw new APIError(errorMessage, response.status, errorDetails);
     }
@@ -134,7 +151,7 @@ export async function uploadFile<T>(
     const data = await response.json();
     console.log(`[API Upload Success]`, data);
     return data;
-    
+
   } catch (error) {
     if (error instanceof APIError) throw error;
     console.error('[API Upload] Network error:', error);
@@ -156,7 +173,7 @@ function getExtensionFromMimeType(mimeType: string): string {
     'application/vnd.ms-excel': 'xls',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
   };
-  
+
   return mimeMap[mimeType] || 'webm';
 }
 
@@ -221,34 +238,37 @@ export async function processVoiceCommand(
 export async function uploadDataFile(file: File) {
   const formData = new FormData();
   formData.append('file', file);
-  
-  const url = `${API_BASE_URL}/api/data/upload`;
-  
+
+  // Get URL at request time to ensure correct browser context
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/api/data/upload`;
+
   console.log(`[API] Uploading data file to ${url}`, {
     name: file.name,
     size: file.size,
-    type: file.type
+    type: file.type,
+    baseUrl: baseUrl
   });
-  
+
   try {
     const response = await fetch(url, {
       method: 'POST',
       body: formData,
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       const errorMessage = errorData.detail || errorData.error || 'File upload failed';
-      
+
       console.error(`[API Upload Error] ${response.status}:`, errorMessage);
-      
+
       throw new APIError(
         errorMessage,
         response.status,
         errorData
       );
     }
-    
+
     const data = await response.json();
     console.log('[API Upload Success]', data);
     return data;
@@ -274,6 +294,23 @@ export async function getDatasetColumns() {
 }
 
 /**
+ * Get data quality analysis
+ */
+export async function getDataQuality() {
+  return apiCall<any>('/api/data/quality');
+}
+
+/**
+ * Clean data
+ */
+export async function cleanData(operation: string, params: any = {}) {
+  return apiCall<any>('/api/data/clean', {
+    method: 'POST',
+    body: JSON.stringify({ operation, params }),
+  });
+}
+
+/**
  * Analyze dataset
  */
 export async function analyzeData() {
@@ -286,11 +323,11 @@ export async function analyzeData() {
  * Train models
  */
 export async function trainModels(targetColumn: string, modelTypes?: string[]) {
-  return apiCall<any>('/api/data/train', {
+  return apiCall<any>('/api/models/train', {
     method: 'POST',
-    body: JSON.stringify({ 
-      target_column: targetColumn, 
-      model_types: modelTypes 
+    body: JSON.stringify({
+      target_column: targetColumn,
+      model_types: modelTypes
     }),
   });
 }
@@ -313,10 +350,10 @@ export async function getModelResults(jobId: string) {
  * Get SHAP explanations
  */
 export async function getExplanations(jobId: string, modelName?: string) {
-  const endpoint = modelName 
+  const endpoint = modelName
     ? `/api/data/explain/${jobId}?model=${modelName}`
     : `/api/data/explain/${jobId}`;
-  
+
   return apiCall<any>(endpoint);
 }
 
@@ -325,4 +362,47 @@ export async function getExplanations(jobId: string, modelName?: string) {
  */
 export async function testData() {
   return apiCall<any>('/api/data/test-data');
+}
+
+// ============================================
+// AI Data Chat API
+// ============================================
+
+export interface ChatResponse {
+  text: string;
+  code: string | null;
+  output: string | null;
+  visualization: string | null;
+  error: boolean;
+}
+
+export interface VisualizationSuggestion {
+  type: string;
+  title: string;
+  description: string;
+  code: string;
+}
+
+/**
+ * Send a message to the AI data assistant
+ */
+export async function sendChatMessage(message: string): Promise<ChatResponse> {
+  return apiCall<ChatResponse>('/api/chat/message', {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });
+}
+
+/**
+ * Get AI-suggested visualizations based on the dataset
+ */
+export async function getVisualizationSuggestions(): Promise<{ suggestions: VisualizationSuggestion[] }> {
+  return apiCall<{ suggestions: VisualizationSuggestion[] }>('/api/chat/suggestions');
+}
+
+/**
+ * Clear chat history
+ */
+export async function clearChatHistory(): Promise<void> {
+  return apiCall<void>('/api/chat/clear', { method: 'POST' });
 }
