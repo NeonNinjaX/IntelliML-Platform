@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import LandingPage from '@/components/landing/LandingPage';
+import BusinessProblemWizard from '@/components/business/BusinessProblemWizard';
 import VoiceButton from '@/components/voice/VoiceButton';
 import FileUploader from '@/components/data/FileUploader';
 import DataPreview from '@/components/data/DataPreview';
@@ -19,7 +20,7 @@ import {
   getExplanations 
 } from '@/lib/api';
 
-type Step = 'upload' | 'analyze' | 'train' | 'explain';
+type Step = 'business' | 'upload' | 'analyze' | 'train' | 'explain';
 type Status = 'checking' | 'connected' | 'error';
 
 export default function Home() {
@@ -30,12 +31,15 @@ export default function Home() {
   const [backendStatus, setBackendStatus] = useState<Status>('checking');
   const [groqStatus, setGroqStatus] = useState<Status>('checking');
 
+  // Business context state
+  const [businessContext, setBusinessContext] = useState<any>(null);
+
   // Workflow state
   const [datasetInfo, setDatasetInfo] = useState<any>(null);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [trainingResults, setTrainingResults] = useState<any>(null);
   const [explanations, setExplanations] = useState<any>(null);
-  const [currentStep, setCurrentStep] = useState<Step>('upload');
+  const [currentStep, setCurrentStep] = useState<Step>('business');
   const [showDashboard, setShowDashboard] = useState(false);
 
   // UI state
@@ -70,6 +74,12 @@ export default function Home() {
     setShowApp(true);
   };
 
+  const handleBusinessComplete = (context: any) => {
+    console.log('Business context:', context);
+    setBusinessContext(context);
+    setCurrentStep('upload');
+  };
+
   const handleDataUpload = async (data: any) => {
     console.log('Data uploaded:', data);
     setDatasetInfo(data);
@@ -93,28 +103,27 @@ export default function Home() {
   };
 
   const handleTrainingComplete = async (results: any) => {
-  console.log('Training complete:', results);
-  setTrainingResults(results);
-  setCurrentStep('explain');
-  
-  try {
-    // Check if job_id exists in results
-    const jobId = results.job_id || results.results?.job_id;
-    const modelName = results.best_model || results.results?.best_model || 'best_model';
+    console.log('Training complete:', results);
+    setTrainingResults(results);
+    setCurrentStep('explain');
     
-    if (jobId) {
-      console.log('Fetching explanations for job:', jobId);
-      const exp = await getExplanations(jobId, modelName);
-      setExplanations(exp);
-    } else {
-      console.warn('No job_id found in results:', results);
-      // Skip explanations if no job_id
+    try {
+      // Check if job_id exists in results
+      const jobId = results.job_id || results.results?.job_id;
+      
+      if (jobId) {
+        console.log('Fetching explanations for job:', jobId);
+        const exp = await getExplanations(jobId);
+        setExplanations(exp);
+      } else {
+        console.warn('No job_id found in results:', results);
+        // Skip explanations if no job_id
+      }
+    } catch (error) {
+      console.error('Failed to get explanations:', error);
+      // Don't throw - just log the error and continue
     }
-  } catch (error) {
-    console.error('Failed to get explanations:', error);
-    // Don't throw - just log the error and continue
-  }
-};
+  };
 
   // Show landing page first
   if (!showApp) {
@@ -160,6 +169,39 @@ export default function Home() {
           </div>
         )}
 
+        {/* Business Context Banner (if set) */}
+        {businessContext && currentStep !== 'business' && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-purple-100 to-blue-100 border-2 border-purple-300 rounded-lg animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">🎯</span>
+                <div>
+                  <h3 className="font-bold text-purple-900">
+                    {businessContext.problem_type?.replace(/_/g, ' ').toUpperCase()}
+                  </h3>
+                  <p className="text-sm text-purple-700">{businessContext.business_goal}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  if (confirm('This will reset your progress. Continue?')) {
+                    setBusinessContext(null);
+                    setDatasetInfo(null);
+                    setAnalysisResults(null);
+                    setTrainingResults(null);
+                    setExplanations(null);
+                    setCurrentStep('business');
+                    setShowDashboard(false);
+                  }
+                }}
+                className="text-sm text-purple-600 hover:text-purple-800 underline"
+              >
+                Change Problem
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Voice Control Section */}
         <div className="mb-8 animate-fadeIn">
           <div className="card bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200">
@@ -177,7 +219,14 @@ export default function Home() {
 
         {/* Progress Steps */}
         <div className="mb-8 animate-fadeIn">
-          <div className="flex items-center justify-between max-w-3xl mx-auto">
+          <div className="flex items-center justify-between max-w-4xl mx-auto overflow-x-auto">
+            <Step 
+              number={0}
+              label="Business Problem" 
+              active={currentStep === 'business'} 
+              completed={businessContext !== null} 
+            />
+            <StepConnector />
             <Step 
               number={1} 
               label="Upload Data" 
@@ -207,6 +256,11 @@ export default function Home() {
             />
           </div>
         </div>
+
+        {/* Step 0: Business Problem */}
+        {currentStep === 'business' && (
+          <BusinessProblemWizard onComplete={handleBusinessComplete} />
+        )}
 
         {/* Step 1: Upload Data */}
         {currentStep === 'upload' && (
@@ -321,11 +375,12 @@ export default function Home() {
             <button
               onClick={() => {
                 if (confirm('Are you sure you want to start over? This will clear all progress.')) {
+                  setBusinessContext(null);
                   setDatasetInfo(null);
                   setAnalysisResults(null);
                   setTrainingResults(null);
                   setExplanations(null);
-                  setCurrentStep('upload');
+                  setCurrentStep('business');
                   setShowDashboard(false);
                 }
               }}
@@ -384,7 +439,7 @@ function Step({
   completed: boolean; 
 }) {
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center min-w-[100px]">
       <div className={`
         w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg 
         transition-all duration-300 shadow-lg
@@ -398,7 +453,7 @@ function Step({
         {completed ? '✓' : number}
       </div>
       <div className={`
-        mt-2 text-sm font-medium transition-colors
+        mt-2 text-xs font-medium transition-colors text-center
         ${active ? 'text-purple-600' : 'text-gray-600'}
       `}>
         {label}
@@ -409,6 +464,6 @@ function Step({
 
 function StepConnector() {
   return (
-    <div className="flex-1 h-1 bg-gradient-to-r from-gray-300 via-purple-200 to-gray-300 mx-4 rounded-full"></div>
+    <div className="flex-1 h-1 bg-gradient-to-r from-gray-300 via-purple-200 to-gray-300 mx-2 rounded-full min-w-[20px]"></div>
   );
 }

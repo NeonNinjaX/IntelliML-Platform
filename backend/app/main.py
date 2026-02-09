@@ -54,6 +54,7 @@ async def root():
             "test_groq": "/test-groq",
             "voice": "/api/voice/*",
             "data": "/api/data/*",
+            "business": "/api/business/*",
             "docs": "/docs",
             "redoc": "/redoc"
         }
@@ -114,7 +115,7 @@ async def test_groq():
 logger.info("Importing routers...")
 
 try:
-    from app.api import voice, data
+    from app.api import voice, data, business_problem
     logger.info("✓ Core routers imported successfully")
 except Exception as e:
     logger.error(f"Failed to import core routers: {e}", exc_info=True)
@@ -156,6 +157,10 @@ logger.info("✓ Voice router included at /api/voice")
 # DATA ROUTER - THIS IS THE IMPORTANT ONE FOR CSV UPLOAD
 app.include_router(data.router, prefix="/api/data", tags=["data"])
 logger.info("✓ Data router included at /api/data")
+
+# BUSINESS PROBLEM ROUTER
+app.include_router(business_problem.router, prefix="/api/business", tags=["business"])
+logger.info("✓ Business problem router included at /api/business")
 
 # OPTIONAL ROUTERS
 if analysis_router:

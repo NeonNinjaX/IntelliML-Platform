@@ -38,6 +38,8 @@ class AnalysisService:
         Perform complete dataset analysis with AI insights
         """
         try:
+            from app.services.business_problem_service import BusinessProblemService
+            
             logger.info("Starting dataset analysis")
             
             # Get current dataframe
@@ -48,13 +50,22 @@ class AnalysisService:
             analysis = self.analyzer.analyze(df)
             logger.info("Analysis complete")
             
-            # Generate AI insights
-            insights = self._generate_ai_insights(analysis)
+            # Get business context
+            business_service = BusinessProblemService()
+            business_context = business_service.get_business_context()
+            
+            # Generate context-aware AI insights
+            if business_context:
+                insights = self._generate_contextual_insights(analysis, business_context)
+            else:
+                insights = self._generate_ai_insights(analysis)
+            
             logger.info("AI insights generated")
             
             return {
                 "analysis": analysis,
                 "ai_insights": insights,
+                "business_context": business_context,
                 "success": True,
             }
             
@@ -95,3 +106,37 @@ Be conversational and helpful."""
         except Exception as e:
             logger.error(f"AI insights generation error: {str(e)}")
             return "Analysis completed. Unable to generate AI insights at this time."
+    
+    def _generate_contextual_insights(self, analysis: dict, business_context: dict) -> str:
+        """Generate insights based on business context"""
+        try:
+            prompt = f"""You are analyzing data for a specific business problem.
+
+Business Context:
+- Industry: {business_context.get('industry')}
+- Problem: {business_context.get('problem_type')}
+- Goal: {business_context.get('business_goal')}
+- Target: {business_context.get('target_variable')}
+
+Dataset Analysis:
+- Rows: {analysis['basic_info']['num_rows']}
+- Columns: {analysis['basic_info']['num_columns']}
+- Quality Score: {analysis['data_quality']['quality_score']}/100
+
+Provide insights specifically focused on:
+1. How well this data supports solving the business problem
+2. Which columns are most relevant for the business goal
+3. What's missing or concerning for this specific use case
+4. Actionable recommendations for next steps
+
+Be specific, business-focused, and actionable (3-5 sentences)."""
+
+            messages = [{"role": "user", "content": prompt}]
+            insights = self.groq.chat_completion(messages, temperature=0.7)
+            
+            return insights if insights else "Analysis completed successfully."
+            
+        except Exception as e:
+            logger.error(f"Contextual insights generation error: {str(e)}")
+            # Fallback to standard insights if contextual generation fails
+            return self._generate_ai_insights(analysis)

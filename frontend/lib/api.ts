@@ -59,7 +59,41 @@ async function apiCall<T>(
     throw new APIError('Network error or server unavailable');
   }
 }
+/**
+ * Analyze business problem
+ */
+export async function analyzeBusinessProblem(description: string) {
+  return apiCall<any>('/api/business/analyze', {
+    method: 'POST',
+    body: JSON.stringify({ description }),
+  });
+}
 
+/**
+ * Refine business context with answers
+ */
+export async function refineBusinessContext(answers: Record<string, string>) {
+  return apiCall<any>('/api/business/refine', {
+    method: 'POST',
+    body: JSON.stringify({ answers }),
+  });
+}
+
+/**
+ * Get current business context
+ */
+export async function getBusinessContext() {
+  return apiCall<any>('/api/business/context');
+}
+
+/**
+ * Clear business context
+ */
+export async function clearBusinessContext() {
+  return apiCall<any>('/api/business/context', {
+    method: 'DELETE',
+  });
+}
 /**
  * File upload with robust error handling and validation
  */
