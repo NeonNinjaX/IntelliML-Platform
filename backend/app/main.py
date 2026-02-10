@@ -37,14 +37,15 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://intelliml-platform.vercel.app",  # Your Vercel URL
-        "https://*.vercel.app",  # Allow preview deployments
-        "http://localhost:3000"  # Local development
+        "https://intelliml-platform.vercel.app",
+        "http://localhost:3000",
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Root endpoint - define BEFORE importing routers
 @app.get("/")
