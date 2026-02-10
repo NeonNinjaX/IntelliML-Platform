@@ -28,18 +28,22 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="IntelliML API",
     description="Voice-Controlled AutoML Platform API",
-    version="1.0.0"
+    version="1.0.0",
+    root_path="/api"
 )
 
 # CORS Configuration - MUST be before routes
 # Using wildcard for development to avoid localhost/127.0.0.1 mismatches
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins in development
-    allow_credentials=False,  # Must be False when using wildcard origins
+    allow_origins=[
+        "https://intelliml-platform.vercel.app",  # Your Vercel URL
+        "https://*.vercel.app",  # Allow preview deployments
+        "http://localhost:3000"  # Local development
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
 # Root endpoint - define BEFORE importing routers
@@ -225,7 +229,7 @@ async def startup_event():
     logger.info("Server: Uvicorn")
     logger.info("Framework: FastAPI")
     logger.info("Environment: Development")
-    logger.info("CORS: Enabled for localhost:3000, localhost:3001")
+    logger.info("CORS: Enabled for localhost:3000, localhost:3001, Vercel")
     logger.info("=" * 70)
     
     # Log all registered routes
