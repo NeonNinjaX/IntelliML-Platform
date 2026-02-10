@@ -28,9 +28,8 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="IntelliML API",
     description="Voice-Controlled AutoML Platform API",
-    version="1.0.0",
-    root_path="/api"
-)
+    version="1.0.0"
+    )
 
 # CORS Configuration - MUST be before routes
 # Using wildcard for development to avoid localhost/127.0.0.1 mismatches
